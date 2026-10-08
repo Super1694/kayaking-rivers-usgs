@@ -1,0 +1,11 @@
+# ignore any virtual environments
+.venv/
+
+# ignore pycache
+__pycache__/
+
+# ignore the .env configuration
+.env
+
+#ignore the SQLite database produced
+*.db
