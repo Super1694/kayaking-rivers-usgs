@@ -10,9 +10,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load variables from .env
-load_dotenv()
-
 
 ################## SQLITE VERSION ##################
 # CHECK DATABASE LOCATION
@@ -48,6 +45,9 @@ def get_sqlite_db_name():
 
 # FINALIZE DATABASE FULL PATH
 def get_sqlite_full_path():
+    # Load variables from .env
+    load_dotenv()
+
     DB_FOLDER = get_sqlite_db_location()
     DB_FILENAME = get_sqlite_db_name()
     DB_PATH = DB_FOLDER / DB_FILENAME
@@ -55,6 +55,28 @@ def get_sqlite_full_path():
     return DB_PATH
 
 
-#Quick Test
-full_path = get_sqlite_full_path()
-print(full_path)
+
+
+################## POSTGRESQL VERSION ##################
+def get_postgres_db_params():
+    # Load variables from .env
+    load_dotenv()
+
+
+    DB_HOST = os.getenv("DB_HOST")
+    DB_PORT = os.getenv("DB_PORT")
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_NAME = os.getenv("DB_NAME")
+
+    if not DB_HOST:
+        raise ValueError(
+            "DB_HOST is not set. Copy the PostgreSQL example file to .env first, and set the database parameters."
+        )
+
+    DB_PARAMS = {"host" : DB_HOST,
+                 "port" : DB_PORT,
+                 "user" : DB_USER,
+                 "password" : DB_PASSWORD,
+                 "dbname" : DB_NAME}
+    return DB_PARAMS
