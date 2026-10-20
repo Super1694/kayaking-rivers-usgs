@@ -21,11 +21,29 @@ DB_PATH = get_sqlite_full_path()
 
 # Get Monitor Data from JSON
 def get_monitor_data():
-    JSON_PATH = Path(__file__) / "monitors_to_upload.json"
-    JSON_HANDLE = open(JSON_PATH)
-    data_to_return = json.load(JSON_HANDLE)
+    try:
+        JSON_PATH = Path(__file__).resolve().parent / "monitors_to_upload.json"
+        JSON_HANDLE = open(JSON_PATH)
+        data_to_return = json.load(JSON_HANDLE)
+        if not isinstance(data_to_return, list):
+            raise ValueError("monitors_to_upload.json must hold a *list* of *dicts*, where each dict is a monitor")
+        
 
+        # Check the data entered
+        # PLACEHOLDER - put the API Call function in here to check that it works with the data from this monitor.
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"Syntax error in monitors_to_upload.json: {e}") from e
     
+
+    # Return the data
+    return data_to_return
+
+data = get_monitor_data()
+print(type(data))
+
+
+
+
 
 
 
