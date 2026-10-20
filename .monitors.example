@@ -1,0 +1,9 @@
+[
+    {
+        "location_name": "Elkhorn Creek @ Frankfort, Kentucky",
+        "reporting_org": "USGS",
+        "org_monitor_id": "USGS-03289500",
+        "org_api_root": "https://api.waterdata.usgs.gov/ogcapi/v0",
+        "is_active": true
+    }
+]
