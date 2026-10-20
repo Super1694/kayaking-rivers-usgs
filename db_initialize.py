@@ -18,7 +18,7 @@ import json
 from db_config import get_sqlite_full_path
 DB_PATH = get_sqlite_full_path()
 
-
+############################### FOR BOTH SQLITE & POSTGRESQL #########################################
 # Get Monitor Data from JSON
 def get_monitor_data():
     try:
@@ -64,8 +64,10 @@ def get_monitor_data():
 
 
 
+
+
 # ##################### SQLITE VERSION ############################
-# Create rivers_monitoring_locations
+# Create table rivers_monitoring_locations
 def sqlite_create_monitoring_locations():
     db_conn = sqlite3.connect(DB_PATH)
     db_cursor = db_conn.cursor()
@@ -85,12 +87,68 @@ def sqlite_create_monitoring_locations():
     db_cursor.execute(create_table1)
     db_conn.commit()
     db_conn.close()
-    print(f"Rivers_monitoring_locaitons table available in {DB_PATH}")
+    print(f"rivers_monitoring_locaitons table available in {DB_PATH}")
 
-
-def sqlite_upload_location():
+# Upsert from monitors_to_upload to rivers_monitoring_locations
+def sqlite_upload_location(monitor_locations_data):
+    # Connect to Database
     db_conn = sqlite3.connect(DB_PATH)
     db_cursor = db_conn.cursor()
 
+    upsert_monitor_locations = """
+    INSERT INTO rivers_monitoring_locations 
+        (location_name,reporting_org,org_monitor_id,org_api_root,is_active)
+    VALUES
+        (:location_name, :reporting_org, :org_monitor_id, :org_api_root, :is_active)
+    ON CONFLICT (reporting_org, org_monitor_id)
+    DO UPDATE SET
+        location_name = EXCLUDED.location_name,
+        org_api_root = EXCLUDED.org_api_root,
+        is_active = EXCLUDED.is_active
+    ;
+    """
+
+    db_cursor.executemany(upsert_monitor_locations, monitor_locations_data)
+    db_conn.commit()
+    db_conn.close()
+    print(f"rivers_monitoring_locations has just had {len(monitor_locations_data)} upserted")
+
+# Create rivers_river_readings table in SQLite
+
+def sqlite_create_river_readings():
+    db_conn = sqlite3.connect(DB_PATH)
+    db_cursor = db_conn.cursor()
+    create_table2 = """
+    CREATE TABLE IF NOT EXISTS rivers_river_readings(
+        reading_id TEXT PRIMARY KEY NOT NULL,
+        time_series_id TEXT,
+        monitor_location_id TEXT NOT NULL,
+        reading_time TEXT NOT NULL,
+        value REAL NOT NULL,
+        unit TEXT NOT NULL,
+        parameter_code TEXT,
+        statistic_id TEXT,
+        approval_status TEXT,
+        qualifier TEXT,
+        org_last_modified TEXT,
+        collecting_org TEXT,
+        pull_source TEXT,
+        pull_time TEXT
+    );
+    """
     
+
+
+# # SQLITE TEST ZONE
+# some_monitor_locations = get_monitor_data()
+# sqlite_create_monitoring_locations()
+# sqlite_upload_location(some_monitor_locations)
+
+
+# check_conn = sqlite3.connect(DB_PATH)
+# check_curs = check_conn.cursor()
+# select_all_sql = """SELECT * FROM rivers_monitoring_locations"""
+# check_curs.execute(select_all_sql)
+# check_data = check_curs.fetchall()
+# print(check_data)
 
