@@ -9,7 +9,7 @@ A fun project to gather river data to help KAYAKERS decide if they want to go do
 ### WHAT AM I
 
 - Get USGS water data readings from various monitor locations
-- Store them in a local database or JSON files
+- Store them in a local database (SQLite or PostgreSQL)
 - Automate the process
 
 ### HOW AM I
@@ -21,7 +21,7 @@ A fun project to gather river data to help KAYAKERS decide if they want to go do
 
 **API call** using Python
 
-**Automated** through systemd
+**Automated** through systemd (Linux Users Only)
 
 **Config file** to hold your user-specific details
 
