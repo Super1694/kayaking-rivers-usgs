@@ -11,6 +11,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
+################## BOTH VERSIONS ##################
+def get_database_type():
+    load_dotenv()
+    DB_TYPE = os.getenv("DB_TYPE")
+    print(DB_TYPE)
+    return DB_TYPE
+
+
 ################## SQLITE VERSION ##################
 # CHECK DATABASE LOCATION
 def get_sqlite_db_location():

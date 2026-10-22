@@ -15,7 +15,7 @@ import sqlite3
 import psycopg
 import json
 
-
+from db_config import get_postgres_db_params, get_database_type, get_sqlite_full_path
 
 
 ############################### FOR BOTH SQLITE & POSTGRESQL #########################################
@@ -306,12 +306,22 @@ def pg_full_initialization(DB_PARAMS_OUTER):
 
 
 # # POSTGRESQL TESTING AREA
-# from db_config import get_postgres_db_params
+
 # DB_PARAMS = get_postgres_db_params()
 # pg_full_initialization(DB_PARAMS)
 
 
 
-
+if __name__ == "__main__":
+    DB_TYPE = get_database_type()
+    if DB_TYPE == "postgresql":
+        DB_PARAMS = get_postgres_db_params()
+        pg_full_initialization(DB_PARAMS)
+    elif DB_TYPE == "sqlite":
+        DB_PATH = get_sqlite_full_path()
+        sqlite_full_initialization(DB_PATH)
+    else:
+        raise Exception("No DB_TYPE found in the .env file. Please check that .env was correctly created")
+    
 
 
