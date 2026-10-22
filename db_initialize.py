@@ -12,11 +12,11 @@
 
 from pathlib import Path
 import sqlite3
+import psycopg
 import json
 
 
-from db_config import get_sqlite_full_path
-DB_PATH = get_sqlite_full_path()
+
 
 ############################### FOR BOTH SQLITE & POSTGRESQL #########################################
 # Get Monitor Data from JSON
@@ -68,8 +68,8 @@ def get_monitor_data():
 
 # ##################### SQLITE VERSION ############################
 # Create table rivers_monitoring_locations
-def sqlite_create_monitoring_locations():
-    db_conn = sqlite3.connect(DB_PATH)
+def sqlite_create_monitoring_locations(DB_PATH_INNER):
+    db_conn = sqlite3.connect(DB_PATH_INNER)
     db_cursor = db_conn.cursor()
 
     # SQL Code to create the SQLite data table for monitor locations:
@@ -87,12 +87,12 @@ def sqlite_create_monitoring_locations():
     db_cursor.execute(create_table1)
     db_conn.commit()
     db_conn.close()
-    print(f"rivers_monitoring_locaitons table available in {DB_PATH}")
+    print(f"rivers_monitoring_locaitons table available in {DB_PATH_INNER}")
 
 # Upsert from monitors_to_upload to rivers_monitoring_locations
-def sqlite_upload_location(monitor_locations_data):
+def sqlite_upload_location(DB_PATH_INNER, monitor_locations_data):
     # Connect to Database
-    db_conn = sqlite3.connect(DB_PATH)
+    db_conn = sqlite3.connect(DB_PATH_INNER)
     db_cursor = db_conn.cursor()
 
     upsert_monitor_locations = """
@@ -115,8 +115,8 @@ def sqlite_upload_location(monitor_locations_data):
 
 # Create rivers_river_readings table in SQLite
 
-def sqlite_create_river_readings():
-    db_conn = sqlite3.connect(DB_PATH)
+def sqlite_create_river_readings(DB_PATH_INNER):
+    db_conn = sqlite3.connect(DB_PATH_INNER)
     db_cursor = db_conn.cursor()
     create_table2 = """
     CREATE TABLE IF NOT EXISTS rivers_river_readings(
@@ -136,19 +136,182 @@ def sqlite_create_river_readings():
         pull_time TEXT
     );
     """
+    db_cursor.execute(create_table2)
+    db_conn.close()
     
+def sqlite_full_initialization(DB_PATH_OUTER):
+    # Get monitor locations from JSON
+    monitor_locations = get_monitor_data()
+
+    # Create rivers_monitoring_locations table and upsert monitors
+    sqlite_create_monitoring_locations(DB_PATH_OUTER)
+    sqlite_upload_location(DB_PATH_OUTER,monitor_locations)
+
+    # Create rivers_river_readings table
+    sqlite_create_river_readings(DB_PATH_OUTER)
 
 
 # # SQLITE TEST ZONE
-# some_monitor_locations = get_monitor_data()
-# sqlite_create_monitoring_locations()
-# sqlite_upload_location(some_monitor_locations)
+# from db_config import get_sqlite_full_path
+# DB_PATH = get_sqlite_full_path()
+# sqlite_full_initialization(DB_PATH)
 
 
 # check_conn = sqlite3.connect(DB_PATH)
 # check_curs = check_conn.cursor()
+# # TABLES CREATED CHECK
+# check_curs.execute("SELECT name FROM sqlite_master WHERE type = 'table';")
+# print(check_curs.fetchall())
+
+
+# # MONITORING LOCATIONS TABLE CHECK
 # select_all_sql = """SELECT * FROM rivers_monitoring_locations"""
 # check_curs.execute(select_all_sql)
 # check_data = check_curs.fetchall()
 # print(check_data)
+
+
+
+
+
+# ##################### POSTGRES VERSION ############################
+# Note - User must have previously created the Server & Database, and put 
+# the connection parameters in the .env file created based on .env.example_postgresql
+
+
+
+# Create Schema
+def pg_create_schema(DB_PARAMS_INNER):
+    try:
+        db_conn = psycopg.connect(host = DB_PARAMS_INNER["host"],
+                                port = DB_PARAMS_INNER["port"],
+                                user = DB_PARAMS_INNER["user"],
+                                password = DB_PARAMS_INNER["password"],
+                                dbname = DB_PARAMS_INNER["dbname"])
+    except psycopg.OperationalError as e:
+        raise psycopg.OperationalError(f"could not connect to database: {e}") from e
+
+    with db_conn:
+        db_cursor = db_conn.cursor()
+        pg_create_schema = """CREATE SCHEMA IF NOT EXISTS rivers"""
+        db_cursor.execute(pg_create_schema)
+    print("Schema Created Succesfully")
+
+def pg_create_monitoring_locations(DB_PARAMS_INNER):
+    try:
+        db_conn = psycopg.connect(host = DB_PARAMS_INNER["host"],
+                                port = DB_PARAMS_INNER["port"],
+                                user = DB_PARAMS_INNER["user"],
+                                password = DB_PARAMS_INNER["password"],
+                                dbname = DB_PARAMS_INNER["dbname"])
+    except psycopg.OperationalError as e:
+        raise psycopg.OperationalError(f"could not connect to database: {e}") from e
+
+    with db_conn:
+        db_cursor = db_conn.cursor()
+        pg_create_table1 = """CREATE TABLE IF NOT EXISTS rivers.monitoring_locations 
+                            (
+                                location_id serial NOT NULL,
+                                location_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
+                                reporting_org character varying(64) COLLATE pg_catalog."default" NOT NULL,
+                                org_monitor_id character varying(64) COLLATE pg_catalog."default" NOT NULL,
+                                org_api_root character varying(255) COLLATE pg_catalog."default" NOT NULL,
+                                is_active boolean DEFAULT true,
+                                CONSTRAINT monitoring_locations_pkey PRIMARY KEY (location_id),
+                                CONSTRAINT unique_org_monitors UNIQUE (reporting_org, org_monitor_id)
+                            );
+                            """
+        db_cursor.execute(pg_create_table1)
+    print("Table rivers.monitoring_locations created successfully")
+
+# Upsert from monitors_to_upload to rivers_monitoring_locations
+def pg_upload_location(DB_PARAMS_INNER, monitor_locations_data):
+    try:
+        db_conn = psycopg.connect(host = DB_PARAMS_INNER["host"],
+                                port = DB_PARAMS_INNER["port"],
+                                user = DB_PARAMS_INNER["user"],
+                                password = DB_PARAMS_INNER["password"],
+                                dbname = DB_PARAMS_INNER["dbname"])
+    except psycopg.OperationalError as e:
+        raise psycopg.OperationalError(f"could not connect to database: {e}") from e
+
+    with db_conn:
+        db_cursor = db_conn.cursor()
+        pg_upsert_monitor_locations = """INSERT INTO rivers.monitoring_locations (
+                                            location_name,
+                                            reporting_org,
+                                            org_monitor_id,
+                                            org_api_root,
+                                            is_active
+                                            )
+                                        VALUES (%(location_name)s, %(reporting_org)s, %(org_monitor_id)s, %(org_api_root)s, %(is_active)s)
+                                        ON CONFLICT (reporting_org, org_monitor_id)
+                                        DO UPDATE SET
+                                            location_name = EXCLUDED.location_name,
+                                            org_api_root = EXCLUDED.org_api_root,
+                                            is_active = EXCLUDED.is_active
+                                        ;"""
+        db_cursor.executemany(pg_upsert_monitor_locations,monitor_locations_data)
+        db_conn.commit()
+    print(f"rivers_monitoring_locations has just had {len(monitor_locations_data)} upserted")
+
+def pg_create_river_readings(DB_PARAMS_INNER):
+    try:
+        db_conn = psycopg.connect(host = DB_PARAMS_INNER["host"],
+                                port = DB_PARAMS_INNER["port"],
+                                user = DB_PARAMS_INNER["user"],
+                                password = DB_PARAMS_INNER["password"],
+                                dbname = DB_PARAMS_INNER["dbname"])
+    except psycopg.OperationalError as e:
+        raise psycopg.OperationalError(f"could not connect to database: {e}") from e
+
+    with db_conn:
+        db_cursor = db_conn.cursor()
+        pg_create_table2 = """CREATE TABLE IF NOT EXISTS rivers.river_readings
+                                (
+                                    reading_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+                                    time_series_id character varying(255) COLLATE pg_catalog."default",
+                                    monitor_location_id character varying(255) COLLATE pg_catalog."default" NOT NULL,
+                                    reading_time timestamp with time zone NOT NULL,
+                                    value numeric(11,2) NOT NULL,
+                                    unit character varying(16) COLLATE pg_catalog."default" NOT NULL,
+                                    parameter_code character varying(16) COLLATE pg_catalog."default",
+                                    statistic_id character varying(16) COLLATE pg_catalog."default",
+                                    approval_status character varying(64) COLLATE pg_catalog."default",
+                                    qualifier character varying(255) COLLATE pg_catalog."default",
+                                    org_last_modified timestamp with time zone,
+                                    collecting_org character varying(255) COLLATE pg_catalog."default",
+                                    pull_source text COLLATE pg_catalog."default",
+                                    pull_time timestamp with time zone,
+                                    CONSTRAINT river_readings_pkey PRIMARY KEY (reading_id)
+                                );
+                            """
+        db_cursor.execute(pg_create_table2)
+    print("Table rivers.river_readings created successfully")
+
+def pg_full_initialization(DB_PARAMS_OUTER):
+    # Get monitor locations from JSON
+    monitor_locations = get_monitor_data()
+
+    # Create rivers shchema
+    pg_create_schema(DB_PARAMS_OUTER)
+
+    #Create rivers.monitoring_locations and upsert monitors
+    pg_create_monitoring_locations(DB_PARAMS_OUTER)
+    pg_upload_location(DB_PARAMS_OUTER,monitor_locations)
+
+    # Create rivers.river_readings table
+    pg_create_river_readings(DB_PARAMS_OUTER)
+
+
+
+# POSTGRESQL TESTING AREA
+from db_config import get_postgres_db_params
+DB_PARAMS = get_postgres_db_params()
+pg_full_initialization(DB_PARAMS)
+
+
+
+
+
 
