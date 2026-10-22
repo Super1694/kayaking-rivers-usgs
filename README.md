@@ -57,11 +57,11 @@ Times are in UTC.
 
 ## WALKTHROUGH SECTIONS
 
----
+
 
 ### PREP: Setup Virtual Environments & install Python Packages
 
-
+---
 
 #### Check That Python 3 Is Installed
 
@@ -130,9 +130,65 @@ See the [Python venv documentation](https://docs.python.org/3/tutorial/venv.html
 
 ---
 
-### Database Setup
-This project can use either a SQLite or a PostgreSQL Database. Creating a PostgreSQL database is beyond the scope of this project. This project has been tested and is compatible with a postgres database.
+### INITIALIZE: Setup Database Tables & Upload Monitors
 
-#### Option 1: SQLite
+This project can use either a SQLite or a PostgreSQL database. Creating a PostgreSQL database is beyond the scope of this project. This project has been tested and is compatible with a PostgreSQL database.
 
+#### Check the .gitignore file 
+
+NOTE: the `.gitignore` file packaged with this repo comes with the following line:
+
+```
+# ignore the .env configuration
+.env
+```
+
+PLEASE CHECK THAT LINE HAS REMAINED UNCHANGED TO PROTECT SENSITIVE INFORMATION SUCH AS PASSWORDS AND IP ADDRESSES PLACED INTO THE `.env`.
+
+#### Create .env File from template 
+
+**NOTE: The `.env` you create in this step must be named EXACTLY `.env`. No more, no less.**
+
+**PostgreSQL Version** 
+
+*If you are using PostgreSQL, you must have created the target server and database previously.*
+*PostgreSQL database administration is beyond the scope of this project.*
+
+1. Make a copy of `.env.example_postgresql` and name it `.env`
+2. Fill in the database connection parameters requested in the `.env`. *Note: leave the variable DB_TYPE unchanged*
+
+**SQLite Version** 
+
+1. Make a copy of `.env.example_sqlite` and name it `.env`
+2. (Optional) You may customize the database name or location if desired. *Note: leave the variable DB_TYPE unchanged*
+
+If a name and location are not specified, the database will be placed inside this repo and will be named `kayaking.db` by default.
+
+#### Update monitors_to_upload.json 
+
+*Holding this space open for instructions not yet written*
+
+
+
+#### Run db_initialize.py to setup & initialize required tables 
+
+From your virtual environment, run:
+
+```
+python db_initialize.py
+```
+
+**What this does**
+
+In **SQLite** this will:
+- Create the database
+- Create the table `rivers_monitoring_locations` and upsert any `monitors_to_upload.json` entries
+- Create the table `rivers_river_readings`
+
+In **PostgreSQL** this will:
+- Create the schema `rivers`
+- Create the table `rivers.monitoring_locations` and upsert any `monitors_to_upload.json` entries
+- Create the table `rivers.river_readings`
+
+---
 
