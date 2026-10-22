@@ -318,7 +318,7 @@ if __name__ == "__main__":
         DB_PARAMS = get_postgres_db_params()
         pg_full_initialization(DB_PARAMS)
     elif DB_TYPE == "sqlite":
-        DB_PATH = get_sqlite_full_path()
+        DB_PATH = get_sqlite_full_path()o
         sqlite_full_initialization(DB_PATH)
     else:
         raise Exception("No DB_TYPE found in the .env file. Please check that .env was correctly created")
