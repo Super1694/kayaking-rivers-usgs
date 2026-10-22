@@ -305,10 +305,10 @@ def pg_full_initialization(DB_PARAMS_OUTER):
 
 
 
-# POSTGRESQL TESTING AREA
-from db_config import get_postgres_db_params
-DB_PARAMS = get_postgres_db_params()
-pg_full_initialization(DB_PARAMS)
+# # POSTGRESQL TESTING AREA
+# from db_config import get_postgres_db_params
+# DB_PARAMS = get_postgres_db_params()
+# pg_full_initialization(DB_PARAMS)
 
 
 
