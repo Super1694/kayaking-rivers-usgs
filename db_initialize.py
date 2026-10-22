@@ -138,7 +138,31 @@ def sqlite_create_river_readings(DB_PATH_INNER):
     """
     db_cursor.execute(create_table2)
     db_conn.close()
-    
+
+def sqlite_create_process_history(DB_PATH_INNER):
+    db_conn = sqlite3.connect(DB_PATH_INNER)
+    db_cursor = db_conn.cursor()
+
+    # SQL Code to create the SQLite data table for process run history:
+    create_table3 = """
+    CREATE TABLE IF NOT EXISTS rivers_process_history(
+        run_id INTEGER PRIMARY KEY,
+        job_type TEXT NOT NULL CHECK (job_type IN ('15-minute', 'daily', 'monthly')),
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        is_successful INTEGER NOT NULL CHECK (is_successful IN (0, 1)),
+        successful_monitor_pulls INTEGER NOT NULL DEFAULT 0,
+        failed_monitor_pulls INTEGER NOT NULL DEFAULT 0,
+        rows_upserted INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT
+    );
+    """
+    db_cursor.execute(create_table3)
+    db_conn.commit()
+    db_conn.close()
+    print(f"rivers_process_history table available in {DB_PATH_INNER}")
+
+
 def sqlite_full_initialization(DB_PATH_OUTER):
     # Get monitor locations from JSON
     monitor_locations = get_monitor_data()
@@ -149,6 +173,9 @@ def sqlite_full_initialization(DB_PATH_OUTER):
 
     # Create rivers_river_readings table
     sqlite_create_river_readings(DB_PATH_OUTER)
+
+    # Create rivers_process_history table
+    sqlite_create_process_history(DB_PATH_OUTER)
 
 
 # # SQLITE TEST ZONE
@@ -289,6 +316,37 @@ def pg_create_river_readings(DB_PARAMS_INNER):
         db_cursor.execute(pg_create_table2)
     print("Table rivers.river_readings created successfully")
 
+
+def pg_create_process_history(DB_PARAMS_INNER):
+    try:
+        db_conn = psycopg.connect(host = DB_PARAMS_INNER["host"],
+                                port = DB_PARAMS_INNER["port"],
+                                user = DB_PARAMS_INNER["user"],
+                                password = DB_PARAMS_INNER["password"],
+                                dbname = DB_PARAMS_INNER["dbname"])
+    except psycopg.OperationalError as e:
+        raise psycopg.OperationalError(f"could not connect to database: {e}") from e
+
+    with db_conn:
+        db_cursor = db_conn.cursor()
+        pg_create_table3 = """CREATE TABLE IF NOT EXISTS rivers.process_history
+                                (
+                                    run_id serial NOT NULL,
+                                    job_type character varying(16) COLLATE pg_catalog."default" NOT NULL,
+                                    started_at timestamp with time zone NOT NULL,
+                                    finished_at timestamp with time zone,
+                                    is_successful boolean NOT NULL,
+                                    successful_monitor_pulls integer NOT NULL DEFAULT 0,
+                                    failed_monitor_pulls integer NOT NULL DEFAULT 0,
+                                    rows_upserted integer NOT NULL DEFAULT 0,
+                                    error_message text COLLATE pg_catalog."default",
+                                    CONSTRAINT process_history_pkey PRIMARY KEY (run_id),
+                                    CONSTRAINT process_history_job_type_check CHECK (job_type IN ('15-minute', 'daily', 'monthly'))
+                                );
+                            """
+        db_cursor.execute(pg_create_table3)
+    print("Table rivers.process_history available")
+
 def pg_full_initialization(DB_PARAMS_OUTER):
     # Get monitor locations from JSON
     monitor_locations = get_monitor_data()
@@ -302,6 +360,9 @@ def pg_full_initialization(DB_PARAMS_OUTER):
 
     # Create rivers.river_readings table
     pg_create_river_readings(DB_PARAMS_OUTER)
+
+    # Create rivers.process_history table
+    pg_create_process_history(DB_PARAMS_OUTER)
 
 
 
