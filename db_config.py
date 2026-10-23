@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 def get_database_type():
     load_dotenv()
     DB_TYPE = os.getenv("DB_TYPE")
-    print(DB_TYPE)
+    #print(DB_TYPE)
     return DB_TYPE
 
 
