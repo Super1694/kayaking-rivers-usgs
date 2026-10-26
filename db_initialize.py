@@ -43,8 +43,8 @@ def get_monitor_data():
                     raise ValueError(f"monitor {monitor_count}: reporting_org is a REQUIRED field. Must be TEXT")
                 if not isinstance(item["org_monitor_id"], str) or not item["org_monitor_id"].strip():
                     raise ValueError(f"monitor {monitor_count}: org_monitor_id is a REQUIRED field. Must be TEXT")
-                if not isinstance(item["org_api_root"], str) or not item["org_api_root"].strip():
-                    raise ValueError(f"monitor {monitor_count}: org_api_root is a REQUIRED field. Must be TEXT")
+                if not isinstance(item["org_api_endpoint"], str) or not item["org_api_endpoint"].strip():
+                    raise ValueError(f"monitor {monitor_count}: org_api_endpoint is a REQUIRED field. Must be TEXT")
                 if not isinstance(item["is_active"], bool):
                     raise ValueError(f"monitor {monitor_count}: is_active is a REQUIRED field. Must be true or false")
             except KeyError as e:
@@ -79,7 +79,7 @@ def sqlite_create_monitoring_locations(DB_PATH_INNER):
         location_name TEXT NOT NULL,
         reporting_org TEXT NOT NULL,
         org_monitor_id TEXT NOT NULL,
-        org_api_root TEXT NOT NULL,
+        org_api_endpoint TEXT NOT NULL,
         is_active INTEGER DEFAULT 1 NOT NULL CHECK (is_active IN (0, 1)),
         UNIQUE (reporting_org, org_monitor_id)
     );
@@ -96,17 +96,17 @@ def sqlite_upload_location(DB_PATH_INNER, monitor_locations_data):
     db_cursor = db_conn.cursor()
 
     upsert_monitor_locations = """
-    INSERT INTO rivers_monitoring_locations 
-        (location_name,reporting_org,org_monitor_id,org_api_root,is_active)
-    VALUES
-        (:location_name, :reporting_org, :org_monitor_id, :org_api_root, :is_active)
-    ON CONFLICT (reporting_org, org_monitor_id)
-    DO UPDATE SET
-        location_name = EXCLUDED.location_name,
-        org_api_root = EXCLUDED.org_api_root,
-        is_active = EXCLUDED.is_active
-    ;
-    """
+        INSERT INTO rivers_monitoring_locations 
+            (location_name,reporting_org,org_monitor_id,org_api_endpoint,is_active)
+        VALUES
+            (:location_name, :reporting_org, :org_monitor_id, :org_api_endpoint, :is_active)
+        ON CONFLICT (reporting_org, org_monitor_id)
+        DO UPDATE SET
+            location_name = EXCLUDED.location_name,
+            org_api_endpoint = EXCLUDED.org_api_endpoint,
+            is_active = EXCLUDED.is_active
+        ;
+        """
 
     db_cursor.executemany(upsert_monitor_locations, monitor_locations_data)
     db_conn.commit()
@@ -242,7 +242,7 @@ def pg_create_monitoring_locations(DB_PARAMS_INNER):
                                 location_name character varying(255) COLLATE pg_catalog."default" NOT NULL,
                                 reporting_org character varying(64) COLLATE pg_catalog."default" NOT NULL,
                                 org_monitor_id character varying(64) COLLATE pg_catalog."default" NOT NULL,
-                                org_api_root character varying(255) COLLATE pg_catalog."default" NOT NULL,
+                                org_api_endpoint character varying(255) COLLATE pg_catalog."default" NOT NULL,
                                 is_active boolean DEFAULT true,
                                 CONSTRAINT monitoring_locations_pkey PRIMARY KEY (location_id),
                                 CONSTRAINT unique_org_monitors UNIQUE (reporting_org, org_monitor_id)
@@ -268,14 +268,14 @@ def pg_upload_location(DB_PARAMS_INNER, monitor_locations_data):
                                             location_name,
                                             reporting_org,
                                             org_monitor_id,
-                                            org_api_root,
+                                            org_api_endpoint,
                                             is_active
                                             )
-                                        VALUES (%(location_name)s, %(reporting_org)s, %(org_monitor_id)s, %(org_api_root)s, %(is_active)s)
+                                        VALUES (%(location_name)s, %(reporting_org)s, %(org_monitor_id)s, %(org_api_endpoint)s, %(is_active)s)
                                         ON CONFLICT (reporting_org, org_monitor_id)
                                         DO UPDATE SET
                                             location_name = EXCLUDED.location_name,
-                                            org_api_root = EXCLUDED.org_api_root,
+                                            org_api_endpoint = EXCLUDED.org_api_endpoint,
                                             is_active = EXCLUDED.is_active
                                         ;"""
         db_cursor.executemany(pg_upsert_monitor_locations,monitor_locations_data)
