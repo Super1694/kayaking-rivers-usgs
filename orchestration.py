@@ -48,26 +48,21 @@ def usgs_continuous_etl(DB_TYPE_INNER, time_parameter, monitor_row):
     api_endpoint = monitor_row["org_api_endpoint"]
 
     # EXTRACT (API Pull)
-    api_full = usgs_pull_continuous(monitor_id,monitor_row)
+    rows_uploaded = 0
+    for page in usgs_pull_continuous(monitor_id,api_endpoint, time_parameter):
+        readings = usgs_transform(page, api_endpoint, collecting_org)
 
-    
-
-    if DB_TYPE_INNER == "sqlite":
-        sqlite_final_json = sqlite_usgs_transform(api_full,api_endpoint,collecting_org)
-        
-
-    elif DB_TYPE_INNER == "postgresql":
-        # LEAVE FOR WHEN POSGTRES VERSION IS BUILT
-        pass
-
-
-
+        if DB_TYPE_INNER == "sqlite":
+            rows_uploaded += sqlite_river_readings_upsert(readings)
+        elif DB_TYPE_INNER == "postgresql":
+            # row_uploaded += pg_river_readings_upsert(readings)
+            pass
 
 
     ## HARDCODED FOR NOW, TO REPLACE WITH VARIABLES
-    total_rows_uploaded = 3
+    rows_uploaded = 3
 
-    return total_rows_uploaded
+    return rows_uploaded
 
 
 
