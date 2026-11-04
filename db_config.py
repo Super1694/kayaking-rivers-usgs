@@ -11,13 +11,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 
-################## BOTH VERSIONS ##################
-def get_database_type():
-    load_dotenv()
-    DB_TYPE = os.getenv("DB_TYPE")
-    #print(DB_TYPE)
-    return DB_TYPE
-
 
 ################## SQLITE VERSION ##################
 # CHECK DATABASE LOCATION
@@ -88,3 +81,23 @@ def get_postgres_db_params():
                  "password" : DB_PASSWORD,
                  "dbname" : DB_NAME}
     return DB_PARAMS
+
+
+################## BOTH VERSIONS ##################
+# CHECK DATABASE TYPE
+def get_database_type():
+    load_dotenv()
+    DB_TYPE = os.getenv("DB_TYPE")
+    #print(DB_TYPE)
+    return DB_TYPE
+
+# GET CONNECTIONS PARAMETERS / STRING
+def get_database_connection(DB_TYPE):
+    if DB_TYPE == "sqlite":
+        connection_details = get_sqlite_full_path()
+    elif DB_TYPE == "postgresql":
+        connection_details = get_postgres_db_params()
+    else:
+        raise ValueError(f"Received DB_TYPE: {DB_TYPE} from .env,\n This indicates the .env file has not been configured, or DB_TYPE has been removed/modified.\nPlease re-configure .env from the example, and ensure the DB_TYPE remains unmodified")
+
+    return connection_details

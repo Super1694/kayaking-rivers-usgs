@@ -3,12 +3,14 @@ import sqlite3
 import psycopg
 
 from db_config import get_postgres_db_params, get_sqlite_full_path, get_database_type
+from usgs_api import usgs_pull_continuous, usgs_transform
+
 
 
 ######## FUNCTIONS TO GET MONITOR LOCATIONS, SQLITE & POSTGRESQL (pg_)
-def sqlite_get_monitor_locations():
+def sqlite_get_monitor_locations(CONNECTION_DETAILS_INNER):
     try:
-        DB_PATH = get_sqlite_full_path()
+        DB_PATH = CONNECTION_DETAILS_INNER
         db_conn = sqlite3.connect(DB_PATH)
         db_conn.row_factory = sqlite3.Row
         db_cursor = db_conn.cursor()
@@ -39,8 +41,8 @@ def sqlite_get_monitor_locations():
 
 
 
-##### MAIN ORCHESTRATION FUNCTION
-def usgs_continuous_etl(DB_TYPE_INNER, time_parameter, monitor_row):
+##### ETL ORCHESTRATION FUNCTION @ MONITOR LEVEL
+def usgs_continuous_etl(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_parameter, monitor_row):
     print(f"Message from usgs_continuous_etl function. Received DB_TYPE: {DB_TYPE_INNER}, Time Parameter: {time_parameter}, monitor_row: {monitor_row}")
 
     monitor_id = monitor_row["org_monitor_id"]
@@ -53,14 +55,13 @@ def usgs_continuous_etl(DB_TYPE_INNER, time_parameter, monitor_row):
         readings = usgs_transform(page, api_endpoint, collecting_org)
 
         if DB_TYPE_INNER == "sqlite":
-            rows_uploaded += sqlite_river_readings_upsert(readings)
+            print("THIS WOULD NOW RUN db_upload.sqlite_river_readings_upsert()")
+            # rows_uploaded += sqlite_river_readings_upsert(CONNECTION_DETAILS_INNER, readings)
         elif DB_TYPE_INNER == "postgresql":
             # row_uploaded += pg_river_readings_upsert(readings)
             pass
 
 
-    ## HARDCODED FOR NOW, TO REPLACE WITH VARIABLES
-    rows_uploaded = 3
 
     return rows_uploaded
 
@@ -72,11 +73,11 @@ def usgs_continuous_etl(DB_TYPE_INNER, time_parameter, monitor_row):
 
 
 
-def etl_monitors_loop(DB_TYPE_INNER, time_frame_inner):
+def etl_monitors_loop(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_frame_inner):
     print(f"Message from etl_monitors_loop: time frame param: {time_frame_inner}, DB_TYPE: {DB_TYPE_INNER}") # TEST ROW
 
     if DB_TYPE_INNER == "sqlite":
-        monitor_list = sqlite_get_monitor_locations()
+        monitor_list = sqlite_get_monitor_locations(CONNECTION_DETAILS_INNER)
     elif DB_TYPE_INNER == "postgresql":
         # HOLD FOR WHEN pg_get_monitor_locations() is written
         pass
@@ -88,7 +89,7 @@ def etl_monitors_loop(DB_TYPE_INNER, time_frame_inner):
     for monitor in monitor_list:
         #print(monitor) # TEST ROW
         try:
-            monitor_rows = usgs_continuous_etl(DB_TYPE_INNER, time_frame_inner, monitor)
+            monitor_rows = usgs_continuous_etl(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_frame_inner, monitor)
             rows_uploaded += monitor_rows
             if monitor_rows > 0:
                 successful_monitoring_locations += 1

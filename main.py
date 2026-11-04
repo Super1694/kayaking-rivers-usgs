@@ -6,8 +6,8 @@ import db_config
 import sqlite3
 
 # CHECK PROCESS HISTORY, NEEDED TO DETERMINE WHICH TYPE OF RUN TO PERFORM
-def sqlite_check_process_history():
-    DB_PATH = db_config.get_sqlite_full_path()
+def sqlite_check_process_history(CONNECTION_DETAILS_INNER):
+    DB_PATH = CONNECTION_DETAILS_INNER
     db_conn = sqlite3.connect(DB_PATH)
     db_cursor = db_conn.cursor()
 
@@ -64,8 +64,8 @@ def sqlite_check_process_history():
 
 ############### UPDATE PROCESS HISTORY WITH RESULTS FROM THIS RUN
 # Sqlite Version
-def sqlite_log_process_results(process_dict_inner):
-    DB_PATH = db_config.get_sqlite_full_path()
+def sqlite_log_process_results(process_dict_inner, CONNECTION_DETAILS_INNER):
+    DB_PATH = CONNECTION_DETAILS_INNER
     db_conn = sqlite3.connect(DB_PATH)
     db_cursor = db_conn.cursor()
     log_row = dict(process_dict_inner)
@@ -88,11 +88,16 @@ def sqlite_log_process_results(process_dict_inner):
     print(f"Message from sqlite_log_process_results function. Process result logged to {DB_PATH} in table rivers_process_history")
 
 
+####
+####    NEED pg_log_process_result STILL
+####
 
 
 
-# Not sure what description to write here
-def etl_and_log(DB_TYPE, run_type):
+
+
+######## MAIN ETL FUNCTION - RUNS ORCHESTRATION FUNCTION AND LOGS THE RESULT
+def main_etl(DB_TYPE, CONNECTION_DETAILS, run_type):
     if run_type == "15-minute":
         time_frame = "PT3H"
     elif run_type == "daily":
@@ -100,11 +105,11 @@ def etl_and_log(DB_TYPE, run_type):
     elif run_type == "monthly":
         time_frame = "P9M"
 
-    print(f"Message from etl_and_log function. time_frame: {time_frame}")
+    print(f"Message from main_etl function. time_frame: {time_frame}")
     error_message = ""
     start_timestamp = datetime.now(UTC)
     try:
-        successful_monitoring_locations, failed_monitoring_locations, rows_uploaded = etl_monitors_loop(DB_TYPE, time_frame)
+        successful_monitoring_locations, failed_monitoring_locations, rows_uploaded = etl_monitors_loop(DB_TYPE, CONNECTION_DETAILS, time_frame)
         stop_timestamp = datetime.now(UTC)
         if successful_monitoring_locations > 0 and rows_uploaded > 0:
             is_successful_run = 1
@@ -120,7 +125,7 @@ def etl_and_log(DB_TYPE, run_type):
         error_message = f"Error: {e}"
 
     
-    print(f"Message from etl_and_log function. Rows Uploaded: {rows_uploaded}")
+    print(f"Message from main_etl function. Rows Uploaded: {rows_uploaded}")
 
         
 
@@ -136,7 +141,7 @@ def etl_and_log(DB_TYPE, run_type):
                     }
 
     if DB_TYPE == "sqlite":
-        sqlite_log_process_results(results_dict)
+        sqlite_log_process_results(results_dict, CONNECTION_DETAILS)
     elif DB_TYPE == "postgresql":
         # LEAVE SPOT FOR POSTGRESQL VERSION ONCE IT IS CREATED
         pass
@@ -158,9 +163,10 @@ def etl_and_log(DB_TYPE, run_type):
 
 if __name__ == "__main__":
     DB_TYPE = db_config.get_database_type()
+    CONNECTION_DETAILS = db_config.get_database_connection(DB_TYPE)
     print(f"Message from name == __main__ portion. DB_TYPE: {DB_TYPE}") # TEST ROW
     if DB_TYPE == "sqlite":
-        historical_run_check = sqlite_check_process_history()
+        historical_run_check = sqlite_check_process_history(CONNECTION_DETAILS)
     elif DB_TYPE == "postgresql":
         # Leave for when historical run check for pg has been made
         pass
@@ -170,17 +176,17 @@ if __name__ == "__main__":
 
     # 15 MINUTE RUN 
     run_type = "15-minute"
-    etl_and_log(DB_TYPE, run_type)
+    main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
     # Daily Run
     if historical_run_check["has_daily_run"] == False:
         run_type = "daily"
-        etl_and_log(DB_TYPE, run_type)
+        main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
     # Monthly Run
     if historical_run_check["has_monthly_run"] == False:
         run_type = "monthly"
-        etl_and_log(DB_TYPE, run_type)
+        main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
 
 

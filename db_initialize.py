@@ -48,7 +48,7 @@ def get_monitor_data():
                 if not isinstance(item["is_active"], bool):
                     raise ValueError(f"monitor {monitor_count}: is_active is a REQUIRED field. Must be true or false")
             except KeyError as e:
-                raise KeyError(f"required key/value pair missing for monitor {monitor_count}: {e.args[0]} ")
+                raise KeyError(f"required key/value pair missing for monitor {monitor_count}: {e.args[0]}")
 
         # PLACEHOLDER - put the API Call function in here to check that it works with the data from this monitor.
 
