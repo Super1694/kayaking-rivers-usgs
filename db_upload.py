@@ -1,10 +1,69 @@
 
 import psycopg
+import sqlite3
+from datetime import datetime
 
 
 ############# SQLITE VERSION
 
+def sqlite_readings_upload(features_list : list, CONNECTION_DETAILS_INNER):
+    DB_PATH = CONNECTION_DETAILS_INNER
 
+    # MODIFY FEATURES_LIST TO WORK WITH SQLITE VARIABLES
+    for reading in features_list:
+        reading["reading_time"] = reading["time"].isoformat()
+        reading["value"] = reading["value"].float()
+        reading["org_last_modified"] = reading["org_last_modified"].isoformat()
+        reading["pull_time"] = reading["pull_time"].isoformat()
+    
+
+    try:
+        db_conn = sqlite3.connect(DB_PATH)
+        db_cursor = db_conn.cursor()
+        upsert_river_readings = """
+            INSERT INTO rivers_river_readings (
+                reading_id,
+                time_series_id,
+                monitor_location_id,
+                reading_time,
+                value,
+                unit,
+                parameter_code,
+                statistic_ic,
+                approval_status,
+                qualifier,
+                org_last_modified,
+                collecting_org,
+                pull_source,
+                pull_time),
+            VALUES (
+                :reaing_id,
+                :time_series_id,
+                :reading_time,
+                :value,
+                :unit,
+                :parameter_code,
+                :statistic_id,
+                :approval_status,
+                :qualifier,
+                :Org_last_modified,
+                :collecting_org,
+                :pull_source,
+                :pull_time)"""
+        db_cursor.executemany(upsert_river_readings, features_list)
+        db_conn.commit()
+    except sqlite3.OperationalError as e:
+        raise sqlite3.OperationalError(f"Error {e}. Looking for db in {DB_PATH} based on .env file.") from e
+    finally:
+        db_conn.close()
+
+
+    #Closing Print Statement
+    closing_timestamp = datetime.now()
+    print(f"[INFO] ({closing_timestamp}) : Rows upserted: {len(features_list)}")
+
+    
+    
 
 
 

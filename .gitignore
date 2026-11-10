@@ -1,11 +1,17 @@
+# CHECK THIS - it protects your sensitive information
+# ignore the .env configuration
+.env
+
+
 # ignore any virtual environments
 .venv/
 
 # ignore pycache
 __pycache__/
 
-# ignore the .env configuration
-.env
-
 #ignore the SQLite database produced
 *.db
+
+#ignore vim backup files
+*.swp
+

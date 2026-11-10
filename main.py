@@ -1,3 +1,7 @@
+"""
+PRODUCTION NOTE: Working through entire process putting in strictly formatted notes
+"""
+
 
 from datetime import datetime, UTC
 from orchestration import etl_monitors_loop
@@ -98,6 +102,8 @@ def sqlite_log_process_results(process_dict_inner, CONNECTION_DETAILS_INNER):
 
 ######## MAIN ETL FUNCTION - RUNS ORCHESTRATION FUNCTION AND LOGS THE RESULT
 def main_etl(DB_TYPE, CONNECTION_DETAILS, run_type):
+    print(f"[DEBUG] ({datetime.now()}) main_etl(): Opening Function. DB_TYPE: {DB_TYPE}; CONNECTION_DETAILS: {CONNECTION_DETAILS}; run_type: {run_type}")
+
     if run_type == "15-minute":
         time_frame = "PT3H"
     elif run_type == "daily":
@@ -162,30 +168,34 @@ def main_etl(DB_TYPE, CONNECTION_DETAILS, run_type):
 
 
 if __name__ == "__main__":
+    print(f"[DEBUG] ({datetime.now()}) main: Opening of main. '__name__' == '__main__'")
+    
+    # Get DB_TYPE, CONNECTION_DETAILS, and historical_run_check
     DB_TYPE = db_config.get_database_type()
     CONNECTION_DETAILS = db_config.get_database_connection(DB_TYPE)
-    print(f"Message from name == __main__ portion. DB_TYPE: {DB_TYPE}") # TEST ROW
     if DB_TYPE == "sqlite":
         historical_run_check = sqlite_check_process_history(CONNECTION_DETAILS)
     elif DB_TYPE == "postgresql":
         # Leave for when historical run check for pg has been made
         pass
 
-    print(f"Message from name == __main__ portion. Historical Run Check: {historical_run_check}") # TEST ROW
-
+    print(f"[DEBUG] ({datetime.now()}) main: DB_TYPE = {DB_TYPE}; Historical Run Check: {historical_run_check}; CONNECTION_DETAILS: {CONNECTION_DETAILS}")
 
     # 15 MINUTE RUN 
     run_type = "15-minute"
+    print(f"[DEBUG] ({datetime.now()}) main: about to call main_etl(). DB_TYPE = {DB_TYPE}; run_type: {run_type}; CONNECTION_DETAILS: {CONNECTION_DETAILS}")
     main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
     # Daily Run
     if historical_run_check["has_daily_run"] == False:
         run_type = "daily"
+        print(f"[DEBUG] ({datetime.now()}) main: about to call main_etl(). DB_TYPE = {DB_TYPE}; run_type: {run_type}; CONNECTION_DETAILS: {CONNECTION_DETAILS}")
         main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
     # Monthly Run
     if historical_run_check["has_monthly_run"] == False:
         run_type = "monthly"
+        print(f"[DEBUG] ({datetime.now()}) main: about to call main_etl(). DB_TYPE = {DB_TYPE}; run_type: {run_type}; CONNECTION_DETAILS: {CONNECTION_DETAILS}")
         main_etl(DB_TYPE, CONNECTION_DETAILS, run_type)
 
 

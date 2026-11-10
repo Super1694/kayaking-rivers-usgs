@@ -14,18 +14,13 @@ A fun project to gather river data to help KAYAKERS decide if they want to go do
 
 ### HOW AM I
 
-**2 data sets**, either in SQLite, PostgreSQL, or local JSON files:
-
-- One for the monitor locations
-- One to store the readings
-
-**API call** using Python
-
-**Automated** through systemd (Linux Users Only)
-
-**Config file** to hold your user-specific details
-
-**requirements.txt file** to install the needed python modules
+- **2 data sets**, either in SQLite, PostgreSQL, or local JSON files:
+  - One for the monitor locations
+  - One to store the readings
+- **API call** using Python
+- **Automated** through systemd (Linux Users Only)
+- **Config file** to hold your user-specific details
+- **requirements.txt file** to install the needed python modules
 
 ---
 
@@ -63,7 +58,7 @@ Times are in UTC.
 
 ---
 
-#### Check That Python 3 Is Installed
+#### 1) Check That Python 3 Is Installed
 
 1. **Check your Python version:**
 
@@ -77,7 +72,7 @@ Times are in UTC.
 
 
 
-#### Create a Virtual Environment (.venv)
+#### 2) Create a Virtual Environment (.venv)
 
 Creating a virtual environment is a common best practice.
 It keeps this project's Python packages separate from the rest of your system, which prevents conflicts between Python projects.
@@ -108,7 +103,7 @@ See the [Python venv documentation](https://docs.python.org/3/tutorial/venv.html
 
 
 
-#### Install Required Python Packages
+#### 3) Install Required Python Packages
 
 1. **Make sure the virtual environment is active.** Your terminal prompt should show `(.venv)`. If it doesn't, see the instructions above.
 
@@ -134,7 +129,7 @@ See the [Python venv documentation](https://docs.python.org/3/tutorial/venv.html
 
 This project can use either a SQLite or a PostgreSQL database. Creating a PostgreSQL database is beyond the scope of this project. This project has been tested and is compatible with a PostgreSQL database.
 
-#### Check the .gitignore file 
+#### 1) Check the .gitignore file 
 
 NOTE: the `.gitignore` file packaged with this repo comes with the following line:
 
@@ -145,9 +140,9 @@ NOTE: the `.gitignore` file packaged with this repo comes with the following lin
 
 PLEASE CHECK THAT LINE HAS REMAINED UNCHANGED TO PROTECT SENSITIVE INFORMATION SUCH AS PASSWORDS AND IP ADDRESSES PLACED INTO THE `.env`.
 
-#### Create .env File from template 
+#### 2) Create .env File from template 
 
-**NOTE: The `.env` you create in this step must be named EXACTLY `.env`. No more, no less.**
+_**NOTE:** The `.env` you create in this step must be named EXACTLY `.env`. No more, no less._
 
 **PostgreSQL Version** 
 
@@ -162,15 +157,15 @@ PLEASE CHECK THAT LINE HAS REMAINED UNCHANGED TO PROTECT SENSITIVE INFORMATION S
 1. Make a copy of `.env.example_sqlite` and name it `.env`
 2. (Optional) You may customize the database name or location if desired. *Note: leave the variable DB_TYPE unchanged*
 
-If a name and location are not specified, the database will be placed inside this repo and will be named `kayaking.db` by default.
+If a name and location are not specified, the database will be placed inside this project directory and will be named `kayaking.db` by default.
 
-#### Update monitors_to_upload.json 
+#### 3) Update monitors_to_upload.json 
 
 *Holding this space open for instructions not yet written*
 
 
 
-#### Run db_initialize.py to setup & initialize required tables 
+#### 4) Run db_initialize.py to setup & initialize required tables 
 
 From your virtual environment, run:
 
