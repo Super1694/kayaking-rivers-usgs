@@ -1,8 +1,8 @@
 
 import sqlite3
 import psycopg
+from datetime import datetime, UTC
 
-from db_config import get_postgres_db_params, get_sqlite_full_path, get_database_type
 from usgs_api import usgs_pull_continuous, usgs_transform
 
 
@@ -35,24 +35,26 @@ def sqlite_get_monitor_locations(CONNECTION_DETAILS_INNER):
 
 
 
-######## FUNCTIONS TO UPDATE  MONITOR LOCATIONS, SQLITE & POSTGRESQL (pg_)
-
-
-
 
 
 ##### ETL ORCHESTRATION FUNCTION @ MONITOR LEVEL
 def usgs_continuous_etl(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_parameter, monitor_row):
-    print(f"Message from usgs_continuous_etl function. Received DB_TYPE: {DB_TYPE_INNER}, Time Parameter: {time_parameter}, monitor_row: {monitor_row}")
-
+    print(f"[DEBUG] ({datetime.now()}) usgs_continuous_etl(): Start of function. Params: DB_TYPE_INNER={DB_TYPE_INNER}; CONNECTION_DETAILS_INNER={CONNECTION_DETAILS_INNER}; time_parameter={time_parameter}; monitor_row={monitor_row}")
+    
     monitor_id = monitor_row["org_monitor_id"]
     collecting_org = monitor_row["reporting_org"]
     api_endpoint = monitor_row["org_api_endpoint"]
+    print(f"[INFO] ({datetime.now()}) usgs_continuous_etl(): Key parameters for other function calls: monitor_id={monitor_id}; collecting_org={collecting_org}; api_endpoint={api_endpoint}")
+    
 
     # EXTRACT (API Pull)
+    print(f"[DEBUG] ({datetime.now()}) usgs_continuous_etl(): Calling usgs_pull_continuous() -> generator.")
+    
     rows_uploaded = 0
     for page in usgs_pull_continuous(monitor_id,api_endpoint, time_parameter):
-        readings = usgs_transform(page, api_endpoint, collecting_org)
+        print(f"[DEBUG] ({datetime.now()}) usgs_continuous_etl() inside for loop: Calling usgs_transform()")
+        readings = usgs_transform(page, api_endpoint, collecting_org) #returns a list of dicts
+        print(f"[INFO] ({datetime.now()}) usgs_continuous_etl() inside for loop: readings={len(readings)} (just for this batch of yielded results in the for loop. Not total)")
 
         if DB_TYPE_INNER == "sqlite":
             print("THIS WOULD NOW RUN db_upload.sqlite_river_readings_upsert()")
@@ -74,37 +76,41 @@ def usgs_continuous_etl(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_parameter,
 
 
 def etl_monitors_loop(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_frame_inner):
-    print(f"Message from etl_monitors_loop: time frame param: {time_frame_inner}, DB_TYPE: {DB_TYPE_INNER}") # TEST ROW
+    print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): Start of function. Params: DB_TYPE_INNER={DB_TYPE_INNER}; CONNECTION_DETAILS_INNER={CONNECTION_DETAILS_INNER}; time_frame_inner={time_frame_inner}")
 
     if DB_TYPE_INNER == "sqlite":
+        print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): Start of function. Calling sqlite_get_monitor_locations()")
         monitor_list = sqlite_get_monitor_locations(CONNECTION_DETAILS_INNER)
     elif DB_TYPE_INNER == "postgresql":
+        # print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): Start of function. Calling sqlite_get_monitor_locations()")
         # HOLD FOR WHEN pg_get_monitor_locations() is written
         pass
 
+    #Initialize loop variables
     successful_monitoring_locations = 0
     failed_monitoring_locations = 0
     rows_uploaded = 0
 
+    #Begin Loop
+    print(f"[INFO] ({datetime.now()}) etl_monitor_loop(): Number of Monitor Locations returned = {len(monitor_list)}. Beginning loop through monitors")
     for monitor in monitor_list:
-        #print(monitor) # TEST ROW
+        print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): Inside of for loop. Monitor = {monitor}")
         try:
+            print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): Calling usgs_continuous_etl().")
             monitor_rows = usgs_continuous_etl(DB_TYPE_INNER, CONNECTION_DETAILS_INNER, time_frame_inner, monitor)
             rows_uploaded += monitor_rows
+            
             if monitor_rows > 0:
                 successful_monitoring_locations += 1
+                print(f"[INFO] ({datetime.now()}) etl_monitor_loop(): After usgs_continous_etl. Monitor results: successful with {monitor_rows} rows uploaded.")
             else:
                 failed_monitoring_locations += 1
+
+            print(f"[INFO] ({datetime.now()}) etl_monitor_loop(): Running total: rows_uploaded={rows_uploaded}; successful_monitoring_locations={successful_monitoring_locations}; failed_monitoring_locations={failed_monitoring_locations}")
         except Exception as e:
             failed_monitoring_locations += 1
-            print(f"Monitor {monitor['org_monitor_id']} failed: {e}")
+            print(f"[WARNING] ({datetime.now()}) etl_monitor_loop(): Inside of for loop. Code failure/exception thrown. Monitor {monitor['org_monitor_id']} failed: {e}")
 
+    print(f"[DEBUG] ({datetime.now()}) etl_monitor_loop(): End of Function. Returns: successful_monitoring_locations={successful_monitoring_locations}; failed_monitoring_locations={failed_monitoring_locations}; rows_uploaded={rows_uploaded}")
     return successful_monitoring_locations, failed_monitoring_locations, rows_uploaded
-
-
-    
-
-
-    
-    
 

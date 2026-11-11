@@ -8,31 +8,47 @@ from datetime import datetime, UTC
 from decimal import Decimal, InvalidOperation
 
 def usgs_pull_continuous(monitor_id_inner: str, api_endpoint_inner: str, time_parameter_inner: str):
-    # print(f"Message from usgs_pull Continuous. monitor_id: {monitor_id_inner}, api_endpoint: {api_endpoint_inner}, time_parameter: {time_parameter_inner}")
+    print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): Start of function. Params: monitor_id_inner={monitor_id_inner}; api_endpoint_inner={api_endpoint_inner}; time_parameter_inner={time_parameter_inner}")
+
     try:
         usgs_params = {"time" : time_parameter_inner, 
                     "limit" : 10000,
                     "monitoring_location_id" : monitor_id_inner
                     }
+        print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): about to make api call. Endpoint = {api_endpoint_inner}; parameters={usgs_params}; timeout=30")
         response = requests.get(api_endpoint_inner, params=usgs_params, timeout=30)
         response.raise_for_status()
-        print(f"API call for {monitor_id_inner} to {api_endpoint_inner} returned response {response.status_code}")
+        print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call for {monitor_id_inner} to {api_endpoint_inner} returned response {response.status_code}")
 
         yield response
+
+        # Check for a link to next page of results
         next_url = None
         for link in response.json()["links"]:
             if link["rel"] == "next":
                 next_url = link["href"]
+                print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has a next page of results. next_url={next_url}")
+
+        if next_url == None:
+            print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has returned all results. No next page")
 
         while next_url != None:
+            print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): about to make api call to next page of results. next_url={next_url}; timeout=30")
             response = requests.get(next_url, timeout=30)
             response.raise_for_status()
-            print(f"API call for {monitor_id_inner} to {api_endpoint_inner} returned response {response.status_code}")
+            print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call for next page of results returned response {response.status_code}")
+
+            
             yield response
+
             next_url = None
             for link in response.json()["links"]:
                     if link["rel"] == "next":
                         next_url = link["href"]
+                        print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has another page of results. next_url={next_url}")
+            if next_url == None:
+                print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has returned all results. No next page")
+                    
     except requests.exceptions.HTTPError as e:
          raise requests.exceptions.RequestException(f"Pull failed for monitor {monitor_id_inner} from {api_endpoint_inner}: {e}") from e
 
@@ -45,7 +61,7 @@ def usgs_pull_continuous(monitor_id_inner: str, api_endpoint_inner: str, time_pa
 
 
 ############# Transform API Calls to list of dictionaries
-def usgs_transform(api_response, api_endpoint: str ,collecting_org: str):
+def usgs_transform(api_response, api_endpoint: str ,collecting_org: str) -> list:
     start_time = datetime.now(UTC)
     
     try:
