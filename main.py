@@ -5,7 +5,7 @@ etl_monitor_loop() from orchestration.py is next
 I think that notes have caught up with actual build out.
 
 Build out bookmarks:
-Working on orchestration.usgs_continuous_etl()
+SQLITE build out is complete.
 
 main.py - missing some pg_ pieces
 orchestration.py - 
@@ -14,9 +14,12 @@ Not yet started:
 NEED pg_check_process_history STILL in main.py
 NEED pg_log_process_result STILL in main.py
 STILL NEEDS THE pg_get_monitor_locations() in orchestration.py
+db_upload pg_upsert needs to be reworked to match the sqlite version.
 
 Pieces stil completely undeveloped to not forget:
 How to update the monitoring locations, or remove them.
+Change from print statemenets to actual logging.
+how to setup systemd service & timer
 """
 
 
