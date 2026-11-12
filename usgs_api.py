@@ -8,18 +8,19 @@ from datetime import datetime, UTC
 from decimal import Decimal, InvalidOperation
 
 def usgs_pull_continuous(monitor_id_inner: str, api_endpoint_inner: str, time_parameter_inner: str):
-    print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): Start of function. Params: monitor_id_inner={monitor_id_inner}; api_endpoint_inner={api_endpoint_inner}; time_parameter_inner={time_parameter_inner}")
+    print(f"[DEBUG] ({datetime.now(UTC)}) usgs_pull_continuous(): Start of function. Params: monitor_id_inner={monitor_id_inner}; api_endpoint_inner={api_endpoint_inner}; time_parameter_inner={time_parameter_inner}")
 
     try:
         usgs_params = {"time" : time_parameter_inner, 
                     "limit" : 10000,
                     "monitoring_location_id" : monitor_id_inner
                     }
-        print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): about to make api call. Endpoint = {api_endpoint_inner}; parameters={usgs_params}; timeout=30")
+        print(f"[DEBUG] ({datetime.now(UTC)}) usgs_pull_continuous(): about to make api call. Endpoint = {api_endpoint_inner}; parameters={usgs_params}; timeout=30")
         response = requests.get(api_endpoint_inner, params=usgs_params, timeout=30)
         response.raise_for_status()
-        print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call for {monitor_id_inner} to {api_endpoint_inner} returned response {response.status_code}")
+        print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call for {monitor_id_inner} to {api_endpoint_inner} returned response {response.status_code}")
 
+        print(f"[DEBUG] ({datetime.now(UTC)}) usgs_pull_continuous(): Generator production spot reached. Yields a raw REST_API response. type(response)={type(response)}")
         yield response
 
         # Check for a link to next page of results
@@ -27,28 +28,29 @@ def usgs_pull_continuous(monitor_id_inner: str, api_endpoint_inner: str, time_pa
         for link in response.json()["links"]:
             if link["rel"] == "next":
                 next_url = link["href"]
-                print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has a next page of results. next_url={next_url}")
+                print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call has a next page of results. next_url={next_url}")
 
         if next_url == None:
-            print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has returned all results. No next page")
+            print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call has returned all results. No next page")
 
         while next_url != None:
-            print(f"[DEBUG] ({datetime.now()}) usgs_pull_continuous(): about to make api call to next page of results. next_url={next_url}; timeout=30")
+            print(f"[DEBUG] ({datetime.now(UTC)}) usgs_pull_continuous(): about to make api call to next page of results. next_url={next_url}; timeout=30")
             response = requests.get(next_url, timeout=30)
             response.raise_for_status()
-            print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call for next page of results returned response {response.status_code}")
+            print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call for next page of results returned response {response.status_code}")
 
-            
+            print(f"[DEBUG] ({datetime.now(UTC)}) usgs_pull_continuous(): Generator production spot reached. Yields a raw REST_API response. type(response)={type(response)}")
             yield response
 
             next_url = None
             for link in response.json()["links"]:
                     if link["rel"] == "next":
                         next_url = link["href"]
-                        print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has another page of results. next_url={next_url}")
+                        print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call has another page of results. next_url={next_url}")
             if next_url == None:
-                print(f"[INFO] ({datetime.now()}) usgs_pull_continuous(): API call has returned all results. No next page")
-                    
+                print(f"[INFO] ({datetime.now(UTC)}) usgs_pull_continuous(): API call has returned all results. No next page")
+
+
     except requests.exceptions.HTTPError as e:
          raise requests.exceptions.RequestException(f"Pull failed for monitor {monitor_id_inner} from {api_endpoint_inner}: {e}") from e
 
@@ -61,25 +63,29 @@ def usgs_pull_continuous(monitor_id_inner: str, api_endpoint_inner: str, time_pa
 
 
 ############# Transform API Calls to list of dictionaries
-def usgs_transform(api_response, api_endpoint: str ,collecting_org: str) -> list:
-    start_time = datetime.now(UTC)
-    
+def usgs_transform(api_response, api_endpoint: str ,collecting_org: str, start_time) -> list:
+    print(f"[DEBUG] ({datetime.now(UTC)}) usgs_transform(): Start of function. Params: type(api_response)={type(api_response)}; api_endpoint={api_endpoint}; collecting_org={collecting_org}; start_time={start_time}")
     try:
         features = api_response.json()["features"]
-        print(f"'features' key extracted from GeoJSON returned by API Call")
+        print(f"[DEBUG] ({datetime.now(UTC)}) usgs_transform(): 'features' key extracted from GeoJSON returned by API Call")
     except KeyError as e:
+        print(f"[WARNING] ({datetime.now(UTC)}) usgs_transform(): Response missing expected 'features' structure. Error {e}")
         raise KeyError(f"Response missing expected 'features' structure: {e}") from e
     except ValueError as e:
+        print(f"[WARNING] ({datetime.now(UTC)}) usgs_transform(): This API call did not return a GeoJSON as expected. Error {e}")
         raise ValueError(f"This API call did not return a GeoJSON as expected: {e}") from e
 
     features_length = len(features)
+    print(f"[INFO] ({datetime.now(UTC)}) usgs_transform(): features_length = {features_length}")
+
     if features_length == 0:
+        print(f"[WARNING] ({datetime.now(UTC)}) usgs_transform(): API call to {api_endpoint} returned empty set of features")
         raise ValueError(f"API call to {api_endpoint} returned empty set of features")
 
+
+    print(f"[DEBUG] ({datetime.now(UTC)}) usgs_transform(): About to begin for loop to process each reading (called a 'feature')")
     return_items = []
     for feature in features:
-        # print(feature)
-        # print('\n')
 
         try:   
 
@@ -171,7 +177,7 @@ def usgs_transform(api_response, api_endpoint: str ,collecting_org: str) -> list
             pull_time = start_time
 
         except (KeyError, ValueError, InvalidOperation) as e:
-            print(f"skipping malformed reading: {e}")
+            print(f"[WARNING] ({datetime.now(UTC)}) usgs_transform() inside for loop: Skipping malformed reading. Error {e}")
             continue
 
         
@@ -195,25 +201,27 @@ def usgs_transform(api_response, api_endpoint: str ,collecting_org: str) -> list
     if return_items_length == 0:
         raise ValueError(f"GeoJSON at {api_endpoint} features failed to map to Dict structure correctly")
 
-    print(f"Features Pulled: {features_length}\nRows ready for upload: {return_items_length}\nFailed Rows: {features_length-return_items_length}")
+    print(f"[INFO] ({datetime.now(UTC)}) usgs_transform(): Features pulled={features_length}; row to upload={return_items_length}; failed_rows= {features_length - return_items_length})")
 
+    print(f"[DEBUG] ({datetime.now(UTC)}) usgs_transform(): End of function. Returning list of readings. Number of readings: {return_items_length}")
     return return_items
     
 
     
 
 
-
-# Sample Data to test it with
-monitor_id     = "USGS-03289500"
-api_endpoint   = "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items"
-api_endpoint_feature = "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items/USGS-03289500"
-time_parameter = "P3M"
-
-responses = usgs_pull_continuous(monitor_id, api_endpoint, time_parameter)
-n = 0
-for response in responses:
-    n += 1
-    # print(f"Generated response number: {n}")
-    data = usgs_transform(response, api_endpoint, collecting_org="USGS")
+if "__name__" == "__main__":
+    # Sample Data to test it with
+    monitor_id     = "USGS-03289500"
+    api_endpoint   = "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items"
+    api_endpoint_feature = "https://api.waterdata.usgs.gov/ogcapi/v0/collections/continuous/items/USGS-03289500"
+    start_pull_timestamp = datetime.now(UTC)
+    time_parameter = "P3M"
+    
+    responses = usgs_pull_continuous(monitor_id, api_endpoint, time_parameter)
+    n = 0
+    for response in responses:
+        n += 1
+        # print(f"Generated response number: {n}")
+        data = usgs_transform(response, api_endpoint, "USGS", start_pull_timestamp)
     

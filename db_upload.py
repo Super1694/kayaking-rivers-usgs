@@ -1,22 +1,30 @@
 
 import psycopg
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 ############# SQLITE VERSION
 
-def sqlite_readings_upload(features_list : list, CONNECTION_DETAILS_INNER):
+def sqlite_readings_upsert(CONNECTION_DETAILS_INNER, features_list : list):
+    print(f"[DEBUG] ({datetime.now(UTC)}) sqlite_readings_upsert(): Start of Function. Params: len(features_list)={len(features_list)}; CONNECTION_DETAILS_INNER={CONNECTION_DETAILS_INNER}")
+
+    readings = [dict(r) for r in features_list]
     DB_PATH = CONNECTION_DETAILS_INNER
 
     # MODIFY FEATURES_LIST TO WORK WITH SQLITE VARIABLES
-    for reading in features_list:
-        reading["reading_time"] = reading["time"].isoformat()
-        reading["value"] = reading["value"].float()
-        reading["org_last_modified"] = reading["org_last_modified"].isoformat()
-        reading["pull_time"] = reading["pull_time"].isoformat()
-    
+    for reading in readings:
+        if reading["reading_time"]:
+            reading["reading_time"] = reading["reading_time"].isoformat()
+        if reading["value"] is not None:
+            reading["value"] = float(reading["value"])
+        if reading["org_last_modified"]:
+            reading["org_last_modified"] = reading["org_last_modified"].isoformat()
+        if reading["pull_time"]:
+            reading["pull_time"] = reading["pull_time"].isoformat()
+    print(f"[DEBUG] ({datetime.now(UTC)}) sqlite_readings_upsert(): variable types adjusted for SQLite.")
 
+    db_conn = None
     try:
         db_conn = sqlite3.connect(DB_PATH)
         db_cursor = db_conn.cursor()
@@ -29,16 +37,17 @@ def sqlite_readings_upload(features_list : list, CONNECTION_DETAILS_INNER):
                 value,
                 unit,
                 parameter_code,
-                statistic_ic,
+                statistic_id,
                 approval_status,
                 qualifier,
                 org_last_modified,
                 collecting_org,
                 pull_source,
-                pull_time),
+                pull_time)
             VALUES (
-                :reaing_id,
+                :reading_id,
                 :time_series_id,
+                :monitor_location_id,
                 :reading_time,
                 :value,
                 :unit,
@@ -46,21 +55,42 @@ def sqlite_readings_upload(features_list : list, CONNECTION_DETAILS_INNER):
                 :statistic_id,
                 :approval_status,
                 :qualifier,
-                :Org_last_modified,
+                :org_last_modified,
                 :collecting_org,
                 :pull_source,
-                :pull_time)"""
-        db_cursor.executemany(upsert_river_readings, features_list)
+                :pull_time)
+            ON CONFLICT (reading_id)
+            DO UPDATE SET
+                time_series_id = EXCLUDED.time_series_id,
+                monitor_location_id = EXCLUDED.monitor_location_id,
+                reading_time = EXCLUDED.reading_time,
+                value = EXCLUDED.value,
+                unit = EXCLUDED.unit,
+                parameter_code = EXCLUDED.parameter_code,
+                statistic_id = EXCLUDED.statistic_id,
+                approval_status = EXCLUDED.approval_status,
+                qualifier = EXCLUDED.qualifier,
+                org_last_modified = EXCLUDED.org_last_modified,
+                collecting_org = EXCLUDED.collecting_org,
+                pull_source = EXCLUDED.pull_source,
+                pull_time = EXCLUDED.pull_time"""
+        print(f"[DEBUG] ({datetime.now(UTC)}) sqlite_readings_upsert(): About to attempt SQL upsert to sqlite database")
+        db_cursor.executemany(upsert_river_readings, readings)
+        print(f"[INFO] ({datetime.now(UTC)}) sqlite_readings_upsert(): {len(readings)} readings upserted via SQL insert statement.")
         db_conn.commit()
+        print(f"[DEBUG] ({datetime.now(UTC)}) sqlite_readings_upsert(): Changes committed to SQLite database")
+
+        rows_upserted = len(readings)
+        print(f"[DEBUG] ({datetime.now(UTC)}) sqlite_readings_upsert(): End of Function. Returns rows_upserted={rows_upserted}")
+        return rows_upserted
     except sqlite3.OperationalError as e:
         raise sqlite3.OperationalError(f"Error {e}. Looking for db in {DB_PATH} based on .env file.") from e
     finally:
-        db_conn.close()
+        if db_conn: 
+            db_conn.close()
 
 
-    #Closing Print Statement
-    closing_timestamp = datetime.now()
-    print(f"[INFO] ({closing_timestamp}) : Rows upserted: {len(features_list)}")
+    
 
     
     
@@ -68,7 +98,7 @@ def sqlite_readings_upload(features_list : list, CONNECTION_DETAILS_INNER):
 
 
 ############# POSTGRES VERSION
-def pg_readings_upload (features_list : list, CONNECTION_DETAILS_INNER : dict):
+def pg_readings_upsert (CONNECTION_DETAILS_INNER : dict, features_list : list):
     conn_params = CONNECTION_DETAILS_INNER
     try: 
         sql_conn = psycopg.connect(host = conn_params["host"],
